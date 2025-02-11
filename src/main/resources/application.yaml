@@ -17,6 +17,16 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: analytics_group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    topics:
+      comment-topic:
+        name: comment_topic
+
   data:
     redis:
       port: 6379
