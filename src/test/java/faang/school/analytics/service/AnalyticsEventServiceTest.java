@@ -36,7 +36,5 @@ public class AnalyticsEventServiceTest {
         Assertions.assertEquals(analyticsEvent.getId(), capturedEvent.getId());
         Assertions.assertEquals(analyticsEvent.getEventType(), capturedEvent.getEventType());
         Assertions.assertEquals(analyticsEvent.getReceiverId(), capturedEvent.getReceiverId());
-
-
     }
 }

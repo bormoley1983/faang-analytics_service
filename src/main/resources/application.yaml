@@ -24,6 +24,8 @@ spring:
     topics:
       comment-topic:
         name: analytics_comment_topic
+      like-topic:
+        name: analytics-like-events
 
   data:
     redis:
@@ -31,19 +33,6 @@ spring:
       host: localhost
       channel:
         profile-view: profile_view_channel
-
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: analytics-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "faang.school.postservice.event"
-    topics:
-      like-topic:
-        name: like-events
 
 server:
   port: 8086

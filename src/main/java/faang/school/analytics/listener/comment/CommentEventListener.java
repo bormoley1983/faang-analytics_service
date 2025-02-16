@@ -20,6 +20,6 @@ public class CommentEventListener implements EventListener<AnalyticsCommentEvent
     @KafkaListener(topics = "${spring.kafka.topics.comment-topic.name}", groupId = "${spring.kafka.consumer.group-id}")
     public void listenEvent(AnalyticsCommentEvent event) {
         AnalyticsEvent analyticsEvent = analyticsEventMapper.toAnalyticsEvent(event);
-        analyticsEventService.saveEvent(analyticsEvent);
+        analyticsEventService.save(analyticsEvent);
     }
 }

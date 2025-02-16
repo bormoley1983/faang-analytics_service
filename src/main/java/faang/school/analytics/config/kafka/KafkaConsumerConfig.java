@@ -1,5 +1,6 @@
 package faang.school.analytics.config.kafka;
 
+
 import faang.school.event.Event;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;

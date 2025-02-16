@@ -66,7 +66,7 @@ dependencies {
     /**
      * Kafka Events
      */
-    implementation("io.github.narol01:kafkaEvent:1.0.1")
+    implementation("io.github.narol01:kafkaEvent:1.0.2")
 }
 
 tasks.withType<Test> {

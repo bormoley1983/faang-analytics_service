@@ -1,9 +1,10 @@
 package faang.school.analytics.service;
 
 import faang.school.analytics.exception.LikeEventNullException;
+import faang.school.analytics.listener.like.LikeEventListener;
 import faang.school.analytics.mapper.AnalyticsEventMapper;
 import faang.school.analytics.model.AnalyticsEvent;
-import faang.school.postservice.event.LikeEvent;
+import faang.school.event.AnalyticsLikeEvent;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,19 +29,19 @@ class LikeEventListenerTest {
 
     @Test
     void likeEvent_shouldThrowException_whenEventIsNull() {
-        Assertions.assertThrows(LikeEventNullException.class, () -> likeEventListener.listenLikeEvent(null));
+        Assertions.assertThrows(LikeEventNullException.class, () -> likeEventListener.listenEvent(null));
     }
 
     @Test
     void likeEvent_shouldCallService_whenEventIsValid() {
-        LikeEvent likeEvent = new LikeEvent(1L, 2L, 2L, LocalDateTime.now());
+        AnalyticsLikeEvent likeEvent = new AnalyticsLikeEvent(1L, 2L, 2L, LocalDateTime.now());
         AnalyticsEvent analyticsEvent = new AnalyticsEvent();
 
-        Mockito.when(analyticsEventMapper.likeEventToAnalyticsEvent(likeEvent)).thenReturn(analyticsEvent);
+        Mockito.when(analyticsEventMapper.toAnalyticsEvent(likeEvent)).thenReturn(analyticsEvent);
 
-        likeEventListener.listenLikeEvent(likeEvent);
+        likeEventListener.listenEvent(likeEvent);
 
-        Mockito.verify(analyticsEventMapper, Mockito.times(1)).likeEventToAnalyticsEvent(likeEvent);
+        Mockito.verify(analyticsEventMapper, Mockito.times(1)).toAnalyticsEvent(likeEvent);
         Mockito.verify(analyticsEventService, Mockito.times(1)).save(analyticsEvent);
     }
 }
