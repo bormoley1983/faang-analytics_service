@@ -20,12 +20,10 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
-      group-id: analytics_group
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: analytics-group
     topics:
       comment-topic:
-        name: comment_topic
+        name: analytics_comment_topic
 
   data:
     redis:

@@ -1,7 +1,7 @@
 package faang.school.analytics.mapper;
 
-import faang.school.analytics.event.comment.CommentEvent;
 import faang.school.analytics.model.AnalyticsEvent;
+import faang.school.event.AnalyticsCommentEvent;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -14,5 +14,5 @@ public interface AnalyticsEventMapper {
     @Mapping(source = "authorId", target = "actorId")
     @Mapping(target = "eventType", expression = "java(faang.school.analytics.model.EventType.POST_COMMENT)")
     @Mapping(source = "timestamp", target = "receivedAt")
-    AnalyticsEvent toAnalyticsEvent(CommentEvent event);
+    AnalyticsEvent toAnalyticsEvent(AnalyticsCommentEvent event);
 }
