@@ -1,7 +1,9 @@
 package faang.school.analytics.mapper;
 
-import faang.school.analytics.model.AnalyticsEvent;
 
+import faang.school.analytics.model.AnalyticsEvent;
+import faang.school.analytics.dto.ResponseAnalyticsEventDto;
+import java.util.List;
 import faang.school.event.AnalyticsCommentEvent;
 import faang.school.event.AnalyticsLikeEvent;
 import org.mapstruct.Mapper;
@@ -24,4 +26,7 @@ public interface AnalyticsEventMapper {
     @Mapping(target = "eventType", constant = "POST_LIKE")
     @Mapping(source = "timestamp", target = "receivedAt")
     AnalyticsEvent toAnalyticsEvent(AnalyticsLikeEvent event);
+
+    ResponseAnalyticsEventDto toAnalyticsEventDto(AnalyticsEvent analyticsEvent);
+    List<ResponseAnalyticsEventDto> toAnalyticsEventDto(List<AnalyticsEvent> analyticsEvents);
 }
