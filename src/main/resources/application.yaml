@@ -17,6 +17,16 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: analytics-group
+    topics:
+      comment-topic:
+        name: analytics_comment_topic
+      like-topic:
+        name: analytics-like-events
+
   data:
     redis:
       port: 6379
