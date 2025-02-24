@@ -1,5 +1,10 @@
 package faang.school.analytics.model;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@Getter
+@RequiredArgsConstructor
 public enum EventType {
     PROFILE_VIEW,
     PROJECT_VIEW,

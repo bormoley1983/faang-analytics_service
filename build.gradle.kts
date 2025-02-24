@@ -25,6 +25,11 @@ dependencies {
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
     /**
+     * Kafka
+     */
+    implementation("org.springframework.kafka:spring-kafka")
+
+    /**
      * Database
      */
     implementation("org.liquibase:liquibase-core")
@@ -50,6 +55,7 @@ dependencies {
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:kafka")
     testImplementation("com.redis.testcontainers:testcontainers-redis-junit-jupiter:1.4.6")
+    testImplementation("org.testcontainers:kafka")
 
     /**
      * Tests
@@ -63,6 +69,11 @@ dependencies {
      * Kafka
      */
     implementation("org.springframework.kafka:spring-kafka:3.3.2")
+
+    /**
+     * Kafka Events
+     */
+    implementation("io.github.narol01:kafkaEvent:1.0.2")
 }
 
 tasks.withType<Test> {

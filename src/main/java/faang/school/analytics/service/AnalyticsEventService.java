@@ -1,5 +1,11 @@
 package faang.school.analytics.service;
 
+import faang.school.analytics.model.AnalyticsEvent;
+import faang.school.analytics.repository.AnalyticsEventRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import faang.school.analytics.dto.Interval;
 import faang.school.analytics.dto.RequestAnalyticsEventDto;
 import faang.school.analytics.model.AnalyticsEvent;
@@ -18,9 +24,11 @@ public class AnalyticsEventService {
     private final AnalyticsEventRepository analyticsEventRepository;
 
     @Transactional
-    public void saveEvent(AnalyticsEvent event) {
-        analyticsEventRepository.save(event);
+    public void save(AnalyticsEvent analyticsEvent) {
+        analyticsEventRepository.save(analyticsEvent);
+        log.info("Like event saved with id: {}", analyticsEvent.getId());
     }
+
 
     @Transactional(readOnly = true)
     public List<AnalyticsEvent> getAnalytics(RequestAnalyticsEventDto requestDto) {

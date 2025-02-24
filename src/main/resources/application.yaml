@@ -24,6 +24,8 @@ spring:
     topics:
       comment-topic:
         name: analytics_comment_topic
+      like-topic:
+        name: analytics-like-events
 
   data:
     redis:
