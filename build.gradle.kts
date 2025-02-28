@@ -64,12 +64,12 @@ dependencies {
     testImplementation("org.assertj:assertj-core:3.24.2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test:3.3.3")
 
     /**
      * Kafka
      */
     implementation("org.springframework.kafka:spring-kafka:3.3.2")
-
     /**
      * Kafka Events
      */
