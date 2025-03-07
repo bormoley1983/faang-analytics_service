@@ -28,7 +28,7 @@ public class CommentEventListener implements EventListener {
             log.info("Json event: {}", jsonEvent);
             CommentEvent commentEvent = objectMapper.readValue(jsonEvent, CommentEvent.class);
             AnalyticsEvent analyticsEvent = analyticsEventMapper.toAnalyticsEvent(commentEvent);
-            analyticsEventService.saveEvent(analyticsEvent);
+            analyticsEventService.save(analyticsEvent);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

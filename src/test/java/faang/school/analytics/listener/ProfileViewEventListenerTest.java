@@ -1,6 +1,8 @@
 package faang.school.analytics.listener;
 
-import faang.school.analytics.event.ProfileViewEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import faang.school.analytics.events.ProfileViewEvent;
 import faang.school.analytics.exception.EventDeserializationException;
 import faang.school.analytics.mapper.AnalyticsEventMapper;
 import faang.school.analytics.model.AnalyticsEvent;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
@@ -27,6 +30,10 @@ class ProfileViewEventListenerTest {
     @Mock
     private AnalyticsEventMapper analyticsEventMapper;
 
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
+
     @InjectMocks
     private ProfileViewEventListener profileViewEventListener;
 
@@ -41,11 +48,11 @@ class ProfileViewEventListenerTest {
 
         AnalyticsEvent analyticsEvent = new AnalyticsEvent();
 
-        when(analyticsEventMapper.toAnalyticsEventDto(profileViewEvent)).thenReturn(analyticsEvent);
+        when(analyticsEventMapper.toAnalyticsEvent(profileViewEvent)).thenReturn(analyticsEvent);
 
         profileViewEventListener.listenEvent(eventJson);
 
-        verify(analyticsEventMapper).toAnalyticsEventDto(profileViewEvent);
+        verify(analyticsEventMapper).toAnalyticsEvent(profileViewEvent);
         verify(analyticsEventService).save(analyticsEvent);
     }
 
