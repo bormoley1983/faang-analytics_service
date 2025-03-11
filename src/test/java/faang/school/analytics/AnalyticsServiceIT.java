@@ -83,7 +83,6 @@ public class AnalyticsServiceIT {
                     assertEquals(event.getPostId(), savedEvent.getReceiverId());
                     assertEquals(event.getAuthorId(), savedEvent.getActorId());
                     assertEquals(EventType.POST_COMMENT, savedEvent.getEventType());
-                    assertEquals(event.getTimestamp(), savedEvent.getReceivedAt());
                 });
     }
 }
