@@ -1,41 +1,56 @@
 package faang.school.analytics.listener;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import faang.school.analytics.AnalyticsServiceIT;
 import faang.school.analytics.config.kafka.KafkaTestConfig;
 import faang.school.analytics.events.ProfileViewEvent;
 import faang.school.analytics.model.AnalyticsEvent;
 import faang.school.analytics.model.EventType;
 import faang.school.analytics.repository.AnalyticsEventRepository;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.kafka.ConfluentKafkaContainer;
+import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
+
+@ActiveProfiles("test")
 @Import(KafkaTestConfig.class)
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext
 public class ProfileViewEventListenerIT {
-    @Autowired
-    private KafkaTemplate<String, String> kafkaTemplate;
+
+    private static final Logger log = LoggerFactory.getLogger(AnalyticsServiceIT.class);
 
     @Autowired
-    private ProfileViewEventListener profileViewEventListener;
+    private KafkaTemplate<String, String> kafkaTemplate;
 
     @Autowired
     private AnalyticsEventRepository analyticsEventRepository;
@@ -43,17 +58,27 @@ public class ProfileViewEventListenerIT {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private final String TOPIC = "analytics_user_view_profile_topic";
+    @Value("${spring.kafka.topics.user-profile-view-topic.name}")
+    private String userViewProfileTopicName;
 
+    static Network testNetwork = Network.newNetwork();
 
+    private static final DockerImageName POSTGRES_IMAGE = DockerImageName.parse("postgres:18-alpine");
+    private static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("confluentinc/cp-kafka:7.7.7");
 
     @Container
-    public static final PostgreSQLContainer<?> POSTGRESQL_CONTAINER =
-            new PostgreSQLContainer<>("postgres:13.3");
+    @SuppressWarnings("resource")
+    static PostgreSQLContainer<?> POSTGRESQL_CONTAINER = 
+        new PostgreSQLContainer<>(POSTGRES_IMAGE)
+            .withNetwork(testNetwork)
+            .withNetworkAliases("test-postgres");									  
 
     @Container
-    public static final KafkaContainer KAFKA_CONTAINER = new KafkaContainer(
-            DockerImageName.parse("confluentinc/cp-kafka:7.3.5"));
+    @SuppressWarnings("resource")
+    static ConfluentKafkaContainer KAFKA_CONTAINER = 
+        new ConfluentKafkaContainer(KAFKA_IMAGE)
+            .withNetwork(testNetwork)
+            .withNetworkAliases("test-kafka");
 
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
@@ -61,28 +86,67 @@ public class ProfileViewEventListenerIT {
         registry.add("spring.datasource.username", POSTGRESQL_CONTAINER::getUsername);
         registry.add("spring.datasource.password", POSTGRESQL_CONTAINER::getPassword);
 
+        registry.add("spring.datasource.hikari.schema", () -> "public");
+        registry.add("spring.jpa.properties.hibernate.default_schema", () -> "public");
+        registry.add("spring.liquibase.default-schema", () -> "public");
+        registry.add("spring.liquibase.liquibase-schema", () -> "public");
+
         registry.add("spring.kafka.bootstrap-servers", KAFKA_CONTAINER::getBootstrapServers);
+        registry.add("spring.kafka.consumer.bootstrap-servers", KAFKA_CONTAINER::getBootstrapServers);
+        registry.add("spring.kafka.consumer.auto-offset-reset", () -> "earliest");
+        registry.add("spring.main.allow-bean-definition-overriding", () -> "true");
+    }
+ 
+    @BeforeEach
+    void setup() throws InterruptedException {
+        objectMapper.registerModule(new JavaTimeModule());
+        analyticsEventRepository.deleteAll();
+
+        Thread.sleep(2000);
+        log.info("Setup complete - Listener ready");
     }
 
     @Test
-    public void testEventListener() throws JsonProcessingException {
+    public void testEventListener() throws Exception {
+
         ProfileViewEvent profileViewEvent = new ProfileViewEvent();
         profileViewEvent.setUserId(10L);
         profileViewEvent.setViewerUserId(3L);
         profileViewEvent.setTimestamp(LocalDateTime.now());
 
-        kafkaTemplate.send(TOPIC, objectMapper.writeValueAsString(profileViewEvent));
+        String jsonEvent = objectMapper.writeValueAsString(profileViewEvent);
+        kafkaTemplate.send(userViewProfileTopicName, jsonEvent).get(10, TimeUnit.SECONDS);
+        kafkaTemplate.flush();
 
         await()
-                .pollInterval(2, TimeUnit.SECONDS)
-                .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> {
-                    AnalyticsEvent analyticsEvent = analyticsEventRepository.findById(1L).orElseThrow();
+            .pollInterval(Duration.ofSeconds(1))
+            .atMost(5, TimeUnit.SECONDS)
+            .untilAsserted(() -> {
+                List<AnalyticsEvent> savedEvents = analyticsEventRepository.findAll();
+                
+                assertThat(savedEvents).isNotEmpty().hasSize(1);
 
-                    assertNotNull(analyticsEvent);
-                    assertEquals(profileViewEvent.getViewerUserId(), analyticsEvent.getActorId());
-                    assertEquals(profileViewEvent.getUserId(), analyticsEvent.getReceiverId());
-                    assertEquals(EventType.PROFILE_VIEW, analyticsEvent.getEventType());
-                });
+                assertThat(savedEvents).isNotEmpty().hasSize(1);
+                
+                AnalyticsEvent analyticsEvent = savedEvents.get(0);
+                assertThat(analyticsEvent).isNotNull();
+                assertThat(analyticsEvent.getActorId()).isEqualTo(profileViewEvent.getViewerUserId());
+                assertThat(analyticsEvent.getReceiverId()).isEqualTo(profileViewEvent.getUserId());
+                assertThat(analyticsEvent.getEventType()).isEqualTo(EventType.PROFILE_VIEW);
+                assertThat(analyticsEvent.getReceivedAt()).isNotNull();
+            });
+    }
+
+    @AfterAll
+    static void cleanup() {
+        if (POSTGRESQL_CONTAINER != null && POSTGRESQL_CONTAINER.isRunning()) {
+            POSTGRESQL_CONTAINER.stop();
+        }
+        if (KAFKA_CONTAINER != null && KAFKA_CONTAINER.isRunning()) {
+            KAFKA_CONTAINER.stop();
+        }
+        if (testNetwork != null) {
+            testNetwork.close();
+        }
     }
 }

@@ -1,4 +1,4 @@
-package faang.school.analytics.config.kafka;
+package faang.school.analytics.config;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;

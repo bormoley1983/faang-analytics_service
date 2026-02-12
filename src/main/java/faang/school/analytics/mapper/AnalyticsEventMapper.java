@@ -39,6 +39,7 @@ public interface AnalyticsEventMapper {
     @Mapping(source = "timestamp", target = "receivedAt")
     AnalyticsEvent toAnalyticsEvent(CommentEvent event);
 
+    @Mapping(target = "id", ignore = true)
     @Mapping(source = "userId", target = "receiverId")
     @Mapping(source = "viewerUserId", target = "actorId")
     @Mapping(target = "eventType", constant = "PROFILE_VIEW")

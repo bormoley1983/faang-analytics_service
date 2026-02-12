@@ -1,6 +1,6 @@
 package faang.school.analytics.client;
 
-import faang.school.analytics.config.context.UserContext;
+import faang.school.analytics.config.UserContext;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import lombok.RequiredArgsConstructor;

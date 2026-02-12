@@ -1,4 +1,4 @@
-package faang.school.analytics.config.context;
+package faang.school.analytics.config;
 
 import org.springframework.stereotype.Component;
 

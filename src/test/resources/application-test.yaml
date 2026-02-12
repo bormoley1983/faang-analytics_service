@@ -1,0 +1,48 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      auto-commit: false
+      schema: public
+      maximum-pool-size: 5
+
+  jpa:
+    # open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+    # show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: public
+
+  liquibase:
+    enabled: false
+    # change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: public
+    liquibase-schema: public
+
+  kafka:
+    consumer:
+      group-id: analytics-test-group-${random.uuid}
+      auto-offset-reset: earliest
+      enable-auto-commit: true
+      auto-commit-interval-ms: 100
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    topics:
+      comment-topic:
+        name: ${KAFKA_ANALYTICS_COMMENT_TOPIC:analytics_comment_topic}
+      like-topic:
+        name: ${KAFKA_ANALYTICS_LIKE_TOPIC:analytics-like-events}
+      user-profile-view-topic:
+        name:  ${KAFKA_ANALYTICS_USER_PROFILE_VIEW_TOPIC:analytics_user_view_profile_topic}
+
+logging:
+  level:
+    root: info
+    liquibase: warn
+    org.apache.kafka: info
+    org.springframework.kafka: info
+    org.testcontainers: info
+    faang.school.analytics.listener: info

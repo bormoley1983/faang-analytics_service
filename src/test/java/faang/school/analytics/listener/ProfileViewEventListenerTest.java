@@ -64,5 +64,39 @@ class ProfileViewEventListenerTest {
 
         verifyNoInteractions(analyticsEventService, analyticsEventMapper);
     }
+
+    
+    @Test
+    void testListenEvent_NullMappedEvent() {
+        String eventJson = "{\"userId\": 123, \"viewerUserId\": 456, \"timestamp\": \"2025-02-24T12:00:00\"}";
+
+        ProfileViewEvent profileViewEvent = new ProfileViewEvent();
+        profileViewEvent.setUserId(123L);
+        profileViewEvent.setViewerUserId(456L);
+        profileViewEvent.setTimestamp(LocalDateTime.parse("2025-02-24T12:00:00"));
+
+        when(analyticsEventMapper.toAnalyticsEvent(profileViewEvent)).thenReturn(null);
+
+        profileViewEventListener.listenEvent(eventJson);
+
+        verify(analyticsEventMapper).toAnalyticsEvent(profileViewEvent);
+        verify(analyticsEventService).save(null);
+    }
+
+    @Test
+    void testListenEvent_MapperThrowsRuntimeException() {
+        String eventJson = "{\"userId\": 123, \"viewerUserId\": 456, \"timestamp\": \"2025-02-24T12:00:00\"}";
+
+        ProfileViewEvent profileViewEvent = new ProfileViewEvent();
+        profileViewEvent.setUserId(123L);
+        profileViewEvent.setViewerUserId(456L);
+        profileViewEvent.setTimestamp(LocalDateTime.parse("2025-02-24T12:00:00"));
+
+        when(analyticsEventMapper.toAnalyticsEvent(profileViewEvent)).thenThrow(new RuntimeException("mapper failed"));
+
+        assertThrows(RuntimeException.class, () -> profileViewEventListener.listenEvent(eventJson));
+
+        verifyNoInteractions(analyticsEventService);
+    }
 }
 

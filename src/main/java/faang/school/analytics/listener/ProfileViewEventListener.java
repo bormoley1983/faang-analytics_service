@@ -9,10 +9,12 @@ import faang.school.analytics.model.AnalyticsEvent;
 import faang.school.analytics.service.AnalyticsEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.stereotype.Component;
 
-import static faang.school.analytics.utils.listener.ListenerErrorMessage.ERROR_PARSING_EVENT;
+import static faang.school.analytics.utils.ListenerErrorMessage.ERROR_PARSING_EVENT;
+
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -24,7 +26,7 @@ public class ProfileViewEventListener implements EventListener {
     private final ObjectMapper objectMapper;
 
     @KafkaListener(topics = "${spring.kafka.topics.user-profile-view-topic.name}", groupId =  "${spring.kafka.consumer.group-id}")
-    public void listenEvent(String eventJson) {
+    public void listenEvent(@Payload String eventJson) {
         try {
             ProfileViewEvent profileViewEvent = objectMapper.readValue(eventJson, ProfileViewEvent.class);
             AnalyticsEvent analyticsEvent = analyticsEventMapper.toAnalyticsEvent(profileViewEvent);
