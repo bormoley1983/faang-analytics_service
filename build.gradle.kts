@@ -6,10 +6,9 @@ plugins {
 
 group = "faang.school"
 version = "1.0"
-
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -32,6 +31,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-liquibase")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
@@ -71,7 +71,7 @@ dependencies {
     }
 
     /**
-     * Test containers
+     * Tests
      */
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
@@ -79,14 +79,11 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     
-    testImplementation("org.testcontainers:testcontainers:2.0.3")
+    testImplementation("org.testcontainers:testcontainers")
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")
     testImplementation("org.testcontainers:postgresql:1.21.4")
     testImplementation("org.testcontainers:kafka:1.21.4")
 
-    /**
-     * Tests
-     */
     testImplementation("org.assertj:assertj-core:3.27.7")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.11.4")
 }

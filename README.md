@@ -1,5 +1,5 @@
 # Analytics Service
-Service responsible for managing user achievements, achievement progress tracking, and related business logic.
+Service responsible for managing user analytics, analytics progress tracking, and related business logic.
 
 ## Quick start
 
@@ -21,8 +21,8 @@ Run tests:
 Build and run in Docker:
 ```sh
 ./gradlew build
-docker build -t achievement-service .
-docker run -p 8085:8085 achievement-service
+docker build -t analytics-service .
+docker run -p 8086:8086 analytics-service
 ```
 
 ## Configuration
