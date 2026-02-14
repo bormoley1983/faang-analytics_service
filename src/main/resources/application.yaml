@@ -30,7 +30,7 @@ spring:
     liquibase-schema: ${DATABASE_SCHEMA:analytics_service}
 
   kafka:
-    bootstrap-servers: ${KAFKA_SERVERS:host.docker.internal:9092}
+    bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
     consumer:
       group-id:  ${KAFKA_ANALYTICS_GROUP_ID:analytics-group}
     topics:
