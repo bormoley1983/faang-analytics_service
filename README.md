@@ -35,3 +35,5 @@ Test config: [src/test/resources/application-test.yaml](src/test/resources/appli
 Feign clients:
 - [ProjectServiceClient](src/main/java/faang/school/analytics/client/ProjectServiceClient.java) — integration with project service
 - Feign configuration: [FeignConfig](src/main/java/faang/school/analytics/client/FeignConfig.java), [FeignUserInterceptor](src/main/java/faang/school/analytics/client/FeignUserInterceptor.java)
+
+**Note:** Base code structure and architecture patterns are based on [FAANG School](https://github.com/faang-school) educational project.
