@@ -5,13 +5,19 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.boot.Banner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.openfeign.EnableFeignClients;
+import faang.school.analytics.config.AnalyticsTopicsProperties;
+import faang.school.analytics.config.AnalyticsIngestionProperties;
+import faang.school.analytics.config.KafkaRetryProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.annotation.EnableKafka;
 
 @SpringBootApplication
 @EnableFeignClients("school.faang.analytics.client")
 @EnableKafka
+@EnableConfigurationProperties({AnalyticsTopicsProperties.class, AnalyticsIngestionProperties.class,
+        KafkaRetryProperties.class})
 public class AnalyticsServiceApp {
     public static void main(String[] args) {
         new SpringApplicationBuilder(AnalyticsServiceApp.class)

@@ -5,14 +5,17 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class ProfileViewEvent {
+    @Builder.Default
+    private int schemaVersion = EventContract.CURRENT_VERSION;
+    private String eventId;
     private Long userId;
     private Long viewerUserId;
-    private LocalDateTime timestamp;
+    private Instant timestamp;
 }

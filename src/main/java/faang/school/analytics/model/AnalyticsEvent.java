@@ -13,7 +13,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -27,6 +27,9 @@ public class AnalyticsEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "event_id", nullable = false, unique = true, length = 64)
+    private String eventId;
+
     @Column(name="receiver_id", nullable = false)
     private Long receiverId;
 
@@ -37,6 +40,9 @@ public class AnalyticsEvent {
     @Column(name = "event_type", nullable = false)
     private EventType eventType;
 
-    @Column(name = "received_at", nullable = false)
-    private LocalDateTime receivedAt;
+    @Column(name = "occurred_at", nullable = false)
+    private Instant occurredAt;
+
+    @Column(name = "received_at", nullable = false, updatable = false)
+    private Instant receivedAt;
 }

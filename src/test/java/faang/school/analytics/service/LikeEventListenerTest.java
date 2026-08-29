@@ -17,7 +17,7 @@ import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @ExtendWith(MockitoExtension.class)
 class LikeEventListenerTest {
@@ -42,7 +42,7 @@ class LikeEventListenerTest {
 
     @Test
     void likeEvent_shouldCallService_whenEventIsValid() throws JsonProcessingException {
-        AnalyticsLikeEvent likeEvent = new AnalyticsLikeEvent(1L, 2L, 2L, LocalDateTime.now());
+        AnalyticsLikeEvent likeEvent = new AnalyticsLikeEvent(1, "evt-1", 1L, 2L, 2L, Instant.now());
         AnalyticsEvent analyticsEvent = new AnalyticsEvent();
         String likeEventJson = objectMapper.writeValueAsString(likeEvent);
 

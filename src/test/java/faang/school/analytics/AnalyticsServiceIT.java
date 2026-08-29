@@ -11,7 +11,6 @@ import faang.school.analytics.model.AnalyticsEvent;
 import faang.school.analytics.model.EventType;
 import faang.school.analytics.repository.AnalyticsEventRepository;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +22,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
@@ -36,9 +41,12 @@ import org.testcontainers.utility.DockerImageName;
 import java.lang.SuppressWarnings;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.UUID;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
@@ -168,7 +176,7 @@ public class AnalyticsServiceIT {
     @Test
     void testCommentEventProcessing() throws Exception {
 
-        CommentEvent event = new CommentEvent(1L, 1L, 1L, LocalDateTime.now());
+        CommentEvent event = new CommentEvent(1, UUID.randomUUID().toString(), 1L, 1L, 1L, Instant.now());
         String jsonEvent = objectMapper.writeValueAsString(event);
 
         log.info("=== Sending Message ===");
@@ -205,8 +213,8 @@ public class AnalyticsServiceIT {
     void testMultipleCommentEventsProcessing() throws Exception {
 
         // Constructor: CommentEvent(commentId, authorId, postId, timestamp)
-        CommentEvent event1 = new CommentEvent(1L, 2L, 3L, LocalDateTime.now());
-        CommentEvent event2 = new CommentEvent(4L, 5L, 6L, LocalDateTime.now().plusMinutes(1));
+        CommentEvent event1 = new CommentEvent(1, UUID.randomUUID().toString(), 1L, 2L, 3L, Instant.now());
+        CommentEvent event2 = new CommentEvent(1, UUID.randomUUID().toString(), 4L, 5L, 6L, Instant.now().plusSeconds(60));
         
         String jsonEvent1 = objectMapper.writeValueAsString(event1);
         String jsonEvent2 = objectMapper.writeValueAsString(event2);
@@ -234,6 +242,44 @@ public class AnalyticsServiceIT {
     }
 
     @Test
+    void duplicateDeliveryPersistsOneAnalyticsFact() throws Exception {
+        CommentEvent event = new CommentEvent(1, "evt-duplicate-1", 10L, 20L, 30L, Instant.now());
+        String payload = objectMapper.writeValueAsString(event);
+
+        kafkaTemplate.send(commentTopicName, payload).get(10, TimeUnit.SECONDS);
+        kafkaTemplate.send(commentTopicName, payload).get(10, TimeUnit.SECONDS);
+        kafkaTemplate.flush();
+
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(analyticsEventRepository.findAll())
+                        .hasSize(1)
+                        .extracting(AnalyticsEvent::getEventId)
+                        .containsExactly("evt-duplicate-1"));
+    }
+
+    @Test
+    void malformedMessageIsRoutedToDeadLetterTopic() throws Exception {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_CONTAINER.getBootstrapServers());
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "analytics-dlt-test-" + UUID.randomUUID());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        try (Consumer<String, String> consumer = new DefaultKafkaConsumerFactory<>(
+                props, new StringDeserializer(), new StringDeserializer()).createConsumer()) {
+            consumer.subscribe(List.of(commentTopicName + ".DLT"));
+            String malformedPayload = "{not-json";
+
+            kafkaTemplate.send(commentTopicName, malformedPayload).get(10, TimeUnit.SECONDS);
+            kafkaTemplate.flush();
+
+            ConsumerRecord<String, String> deadLetter = KafkaTestUtils.getSingleRecord(
+                    consumer, commentTopicName + ".DLT", Duration.ofSeconds(10));
+            assertThat(deadLetter.value()).isEqualTo(malformedPayload);
+            assertThat(analyticsEventRepository.findAll()).isEmpty();
+        }
+    }
+
+    @Test
     void testDatabaseIsEmptyAfterCleanup() {
         List<AnalyticsEvent> events = analyticsEventRepository.findAll();
         assertThat(events).isEmpty();
@@ -242,8 +288,8 @@ public class AnalyticsServiceIT {
     @Test
     void testEventPersistenceWithValidData() throws Exception {
 
-        LocalDateTime eventTime = LocalDateTime.now().withNano(0);
-        CommentEvent event = new CommentEvent(100L, 200L, 300L, eventTime);
+        Instant eventTime = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        CommentEvent event = new CommentEvent(1, UUID.randomUUID().toString(), 100L, 200L, 300L, eventTime);
         String jsonEvent = objectMapper.writeValueAsString(event);
 
         kafkaTemplate.send(commentTopicName, jsonEvent).get(10, TimeUnit.SECONDS);
@@ -260,19 +306,9 @@ public class AnalyticsServiceIT {
                     assertThat(savedEvent.getEventType()).isEqualTo(EventType.POST_COMMENT);
                     assertThat(savedEvent.getActorId()).isEqualTo(200L);
                     assertThat(savedEvent.getReceiverId()).isEqualTo(100L);
-                    assertThat(savedEvent.getReceivedAt()).isAfter(eventTime.minusMinutes(1));
-                    assertThat(savedEvent.getReceivedAt()).isBefore(LocalDateTime.now().plusMinutes(1));
+                    assertThat(savedEvent.getReceivedAt()).isAfter(eventTime.minusSeconds(60));
+                    assertThat(savedEvent.getReceivedAt()).isBefore(Instant.now().plusSeconds(60));
                 });
-    }
-
-    @Test
-    void testNoEventsProcessedWhenInvalidJsonSent() throws InterruptedException {
-        String invalidJson = "{\"invalid\": \"json\", \"missing\": \"fields\"}";
-        
-        kafkaTemplate.send(commentTopicName, invalidJson);
-        
-        List<AnalyticsEvent> savedEvents = analyticsEventRepository.findAll();
-        assertThat(savedEvents).isEmpty();
     }
 
     @Test
@@ -283,16 +319,4 @@ public class AnalyticsServiceIT {
         assertThat(analyticsEventRepository.findAll()).isEmpty();
     }
 
-    @AfterAll
-    static void cleanup() {
-        if (POSTGRESQL_CONTAINER != null && POSTGRESQL_CONTAINER.isRunning()) {
-            POSTGRESQL_CONTAINER.stop();
-        }
-        if (KAFKA_CONTAINER != null && KAFKA_CONTAINER.isRunning()) {
-            KAFKA_CONTAINER.stop();
-        }
-        if (testNetwork != null) {
-            testNetwork.close();
-        }
-    }
 }

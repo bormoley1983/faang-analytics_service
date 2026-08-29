@@ -3,6 +3,7 @@ package faang.school.analytics.listener;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.analytics.events.AnalyticsLikeEvent;
+import faang.school.analytics.events.EventContract;
 import faang.school.analytics.exception.EventDeserializationException;
 import faang.school.analytics.exception.LikeEventNullException;
 import faang.school.analytics.mapper.AnalyticsEventMapper;
@@ -10,8 +11,6 @@ import faang.school.analytics.model.AnalyticsEvent;
 import faang.school.analytics.service.AnalyticsEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import static faang.school.analytics.utils.ListenerErrorMessage.ERROR_PARSING_EVENT;
 
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -28,7 +27,7 @@ public class LikeEventListener implements EventListener {
 
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "${spring.kafka.topics.like-topic.name}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${app.kafka.topics.analytics.like}", groupId = "${spring.kafka.consumer.group-id}")
     public void listenEvent(@Payload String likeEventJson) {
         if (likeEventJson == null) {
             throw new LikeEventNullException("Like event is null");
@@ -36,12 +35,14 @@ public class LikeEventListener implements EventListener {
 
         try {
             AnalyticsLikeEvent analyticsLikeEvent = objectMapper.readValue(likeEventJson, AnalyticsLikeEvent.class);
+            EventContract.requireSupported(analyticsLikeEvent.getSchemaVersion());
             AnalyticsEvent analyticsEvent = analyticsEventMapper.toAnalyticsEvent(analyticsLikeEvent);
-            log.info("Kafka listener become LikeEvent: {}", analyticsEvent);
+            log.info("Received analytics event: eventId={}, type={}",
+                    analyticsEvent.getEventId(), analyticsEvent.getEventType());
             analyticsEventService.save(analyticsEvent);
         } catch (JsonProcessingException e) {
-            log.error(ERROR_PARSING_EVENT, likeEventJson, e);
-            throw new EventDeserializationException(e.getMessage());
+            log.warn("Unable to deserialize analytics like event: payloadLength={}", likeEventJson.length());
+            throw new EventDeserializationException("Unable to deserialize analytics like event", e);
         }
     }
 }

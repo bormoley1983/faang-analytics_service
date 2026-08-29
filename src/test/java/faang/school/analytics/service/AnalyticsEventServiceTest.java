@@ -1,40 +1,74 @@
 package faang.school.analytics.service;
 
+import faang.school.analytics.config.AnalyticsIngestionProperties;
+import faang.school.analytics.exception.InvalidEventTimestampException;
 import faang.school.analytics.model.AnalyticsEvent;
 import faang.school.analytics.model.EventType;
 import faang.school.analytics.repository.AnalyticsEventRepository;
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 
-import static org.mockito.Mockito.times;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class AnalyticsEventServiceTest {
-
-    @InjectMocks
-    AnalyticsEventService analyticsEventService;
+class AnalyticsEventServiceTest {
+    private static final Instant NOW = Instant.parse("2026-08-29T12:00:00Z");
 
     @Mock
-    AnalyticsEventRepository analyticsEventRepository;
+    private AnalyticsEventRepository repository;
+
+    private AnalyticsEventService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new AnalyticsEventService(repository,
+                new AnalyticsIngestionProperties(Duration.ofMinutes(5), Duration.ofDays(365)),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+    }
 
     @Test
-    void saveTest() {
-        AnalyticsEvent analyticsEvent = new AnalyticsEvent(1L, 2L, 2L, EventType.POST_LIKE, LocalDateTime.now());
+    void savesEventOnlyWhenInsertWinsDeduplicationRace() {
+        AnalyticsEvent event = eventAt(NOW.minusSeconds(10));
+        when(repository.insertIfAbsent("evt-1", 2L, 3L, "POST_LIKE",
+                event.getOccurredAt(), NOW)).thenReturn(1);
 
-        analyticsEventService.save(analyticsEvent);
-        ArgumentCaptor<AnalyticsEvent> captor = ArgumentCaptor.forClass(AnalyticsEvent.class);
-        verify(analyticsEventRepository, times(1)).save(captor.capture());
-        AnalyticsEvent capturedEvent = captor.getValue();
-        Assertions.assertEquals(analyticsEvent.getId(), capturedEvent.getId());
-        Assertions.assertEquals(analyticsEvent.getEventType(), capturedEvent.getEventType());
-        Assertions.assertEquals(analyticsEvent.getReceiverId(), capturedEvent.getReceiverId());
+        assertThat(service.save(event)).isTrue();
+        assertThat(event.getReceivedAt()).isEqualTo(NOW);
+        verify(repository).insertIfAbsent("evt-1", 2L, 3L, "POST_LIKE", event.getOccurredAt(), NOW);
+    }
+
+    @Test
+    void reportsDuplicateAsNotInserted() {
+        AnalyticsEvent event = eventAt(NOW);
+        when(repository.insertIfAbsent("evt-1", 2L, 3L, "POST_LIKE", NOW, NOW)).thenReturn(0);
+
+        assertThat(service.save(event)).isFalse();
+    }
+
+    @Test
+    void rejectsEventBeyondFutureSkew() {
+        assertThatThrownBy(() -> service.save(eventAt(NOW.plus(Duration.ofMinutes(6)))))
+                .isInstanceOf(InvalidEventTimestampException.class);
+    }
+
+    private AnalyticsEvent eventAt(Instant occurredAt) {
+        return AnalyticsEvent.builder()
+                .eventId("evt-1")
+                .receiverId(2L)
+                .actorId(3L)
+                .eventType(EventType.POST_LIKE)
+                .occurredAt(occurredAt)
+                .build();
     }
 }

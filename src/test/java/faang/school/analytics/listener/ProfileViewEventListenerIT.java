@@ -10,7 +10,6 @@ import faang.school.analytics.model.AnalyticsEvent;
 import faang.school.analytics.model.EventType;
 import faang.school.analytics.repository.AnalyticsEventRepository;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -32,7 +31,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.UUID;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -110,9 +110,10 @@ public class ProfileViewEventListenerIT {
     public void testEventListener() throws Exception {
 
         ProfileViewEvent profileViewEvent = new ProfileViewEvent();
+        profileViewEvent.setEventId(UUID.randomUUID().toString());
         profileViewEvent.setUserId(10L);
         profileViewEvent.setViewerUserId(3L);
-        profileViewEvent.setTimestamp(LocalDateTime.now());
+        profileViewEvent.setTimestamp(Instant.now());
 
         String jsonEvent = objectMapper.writeValueAsString(profileViewEvent);
         kafkaTemplate.send(userViewProfileTopicName, jsonEvent).get(10, TimeUnit.SECONDS);
@@ -137,16 +138,4 @@ public class ProfileViewEventListenerIT {
             });
     }
 
-    @AfterAll
-    static void cleanup() {
-        if (POSTGRESQL_CONTAINER != null && POSTGRESQL_CONTAINER.isRunning()) {
-            POSTGRESQL_CONTAINER.stop();
-        }
-        if (KAFKA_CONTAINER != null && KAFKA_CONTAINER.isRunning()) {
-            KAFKA_CONTAINER.stop();
-        }
-        if (testNetwork != null) {
-            testNetwork.close();
-        }
-    }
 }

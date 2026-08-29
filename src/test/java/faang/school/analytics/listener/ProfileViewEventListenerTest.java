@@ -14,7 +14,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
@@ -39,12 +39,13 @@ class ProfileViewEventListenerTest {
 
     @Test
     void testListenEvent_Success() {
-        String eventJson = "{\"userId\": 123, \"viewerUserId\": 456, \"timestamp\": \"2025-02-24T12:00:00\"}";
+        String eventJson = "{\"eventId\":\"evt-1\",\"userId\":123,\"viewerUserId\":456,\"timestamp\":\"2025-02-24T12:00:00Z\"}";
 
         ProfileViewEvent profileViewEvent = new ProfileViewEvent();
+        profileViewEvent.setEventId("evt-1");
         profileViewEvent.setUserId(123L);
         profileViewEvent.setViewerUserId(456L);
-        profileViewEvent.setTimestamp(LocalDateTime.parse("2025-02-24T12:00:00"));
+        profileViewEvent.setTimestamp(Instant.parse("2025-02-24T12:00:00Z"));
 
         AnalyticsEvent analyticsEvent = new AnalyticsEvent();
 
@@ -68,12 +69,13 @@ class ProfileViewEventListenerTest {
     
     @Test
     void testListenEvent_NullMappedEvent() {
-        String eventJson = "{\"userId\": 123, \"viewerUserId\": 456, \"timestamp\": \"2025-02-24T12:00:00\"}";
+        String eventJson = "{\"eventId\":\"evt-1\",\"userId\":123,\"viewerUserId\":456,\"timestamp\":\"2025-02-24T12:00:00Z\"}";
 
         ProfileViewEvent profileViewEvent = new ProfileViewEvent();
+        profileViewEvent.setEventId("evt-1");
         profileViewEvent.setUserId(123L);
         profileViewEvent.setViewerUserId(456L);
-        profileViewEvent.setTimestamp(LocalDateTime.parse("2025-02-24T12:00:00"));
+        profileViewEvent.setTimestamp(Instant.parse("2025-02-24T12:00:00Z"));
 
         when(analyticsEventMapper.toAnalyticsEvent(profileViewEvent)).thenReturn(null);
 
@@ -85,12 +87,13 @@ class ProfileViewEventListenerTest {
 
     @Test
     void testListenEvent_MapperThrowsRuntimeException() {
-        String eventJson = "{\"userId\": 123, \"viewerUserId\": 456, \"timestamp\": \"2025-02-24T12:00:00\"}";
+        String eventJson = "{\"eventId\":\"evt-1\",\"userId\":123,\"viewerUserId\":456,\"timestamp\":\"2025-02-24T12:00:00Z\"}";
 
         ProfileViewEvent profileViewEvent = new ProfileViewEvent();
+        profileViewEvent.setEventId("evt-1");
         profileViewEvent.setUserId(123L);
         profileViewEvent.setViewerUserId(456L);
-        profileViewEvent.setTimestamp(LocalDateTime.parse("2025-02-24T12:00:00"));
+        profileViewEvent.setTimestamp(Instant.parse("2025-02-24T12:00:00Z"));
 
         when(analyticsEventMapper.toAnalyticsEvent(profileViewEvent)).thenThrow(new RuntimeException("mapper failed"));
 
