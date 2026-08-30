@@ -1,13 +1,12 @@
-package faang.school.analytics.service;
+package faang.school.analytics.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import faang.school.analytics.events.AnalyticsLikeEvent;
+import faang.school.analytics.events.CommentEvent;
 import faang.school.analytics.exception.EventDeserializationException;
-import faang.school.analytics.exception.LikeEventNullException;
-import faang.school.analytics.listener.LikeEventListener;
 import faang.school.analytics.mapper.AnalyticsEventMapper;
 import faang.school.analytics.model.AnalyticsEvent;
+import faang.school.analytics.service.AnalyticsEventService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,7 +25,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class LikeEventListenerTest {
+class CommentEventListenerTest {
 
     private static final Instant TIMESTAMP = Instant.parse("2026-08-29T12:00:00Z");
 
@@ -41,36 +40,27 @@ class LikeEventListenerTest {
             .registerModule(new JavaTimeModule());
 
     @InjectMocks
-    private LikeEventListener likeEventListener;
-
-    @Test
-    void listenEvent_whenPayloadIsNull_throwsLikeEventNull() {
-        // Act / Assert
-        assertThatThrownBy(() -> likeEventListener.listenEvent(null))
-                .isInstanceOf(LikeEventNullException.class)
-                .hasMessageContaining("null");
-        verifyNoInteractions(analyticsEventMapper, analyticsEventService);
-    }
+    private CommentEventListener commentEventListener;
 
     @Test
     void listenEvent_whenPayloadIsValid_mapsAndSaves() throws Exception {
         // Arrange
-        AnalyticsLikeEvent likeEvent = AnalyticsLikeEvent.builder()
+        CommentEvent commentEvent = CommentEvent.builder()
                 .eventId("evt-1")
                 .postId(1L)
-                .userId(2L)
-                .authorId(3L)
+                .authorId(2L)
+                .commentId(3L)
                 .timestamp(TIMESTAMP)
                 .build();
-        String json = objectMapper.writeValueAsString(likeEvent);
+        String json = objectMapper.writeValueAsString(commentEvent);
         AnalyticsEvent analyticsEvent = new AnalyticsEvent();
-        when(analyticsEventMapper.toAnalyticsEvent(likeEvent)).thenReturn(analyticsEvent);
+        when(analyticsEventMapper.toAnalyticsEvent(commentEvent)).thenReturn(analyticsEvent);
 
         // Act
-        likeEventListener.listenEvent(json);
+        commentEventListener.listenEvent(json);
 
         // Assert
-        verify(analyticsEventMapper).toAnalyticsEvent(likeEvent);
+        verify(analyticsEventMapper).toAnalyticsEvent(commentEvent);
         verify(analyticsEventService).save(analyticsEvent);
     }
 
@@ -80,27 +70,27 @@ class LikeEventListenerTest {
         String json = "{not-valid-json";
 
         // Act / Assert
-        assertThatThrownBy(() -> likeEventListener.listenEvent(json))
+        assertThatThrownBy(() -> commentEventListener.listenEvent(json))
                 .isInstanceOf(EventDeserializationException.class)
-                .hasMessageContaining("like event");
+                .hasMessageContaining("comment event");
         verifyNoInteractions(analyticsEventMapper, analyticsEventService);
     }
 
     @Test
     void listenEvent_whenSchemaVersionUnsupported_throwsIllegalArgument() throws Exception {
         // Arrange
-        AnalyticsLikeEvent likeEvent = AnalyticsLikeEvent.builder()
+        CommentEvent commentEvent = CommentEvent.builder()
                 .schemaVersion(99)
                 .eventId("evt-1")
                 .postId(1L)
-                .userId(2L)
-                .authorId(3L)
+                .authorId(2L)
+                .commentId(3L)
                 .timestamp(TIMESTAMP)
                 .build();
-        String json = objectMapper.writeValueAsString(likeEvent);
+        String json = objectMapper.writeValueAsString(commentEvent);
 
         // Act / Assert
-        assertThatThrownBy(() -> likeEventListener.listenEvent(json))
+        assertThatThrownBy(() -> commentEventListener.listenEvent(json))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("schema version");
         verifyNoInteractions(analyticsEventMapper, analyticsEventService);
@@ -110,18 +100,18 @@ class LikeEventListenerTest {
     void listenEvent_whenMapperReturnsNull_throwsNpeBeforeSave() throws Exception {
         // Arrange: the listener logs the mapped event before saving, so a null mapping
         // surfaces as an NPE (documented current contract).
-        AnalyticsLikeEvent likeEvent = AnalyticsLikeEvent.builder()
+        CommentEvent commentEvent = CommentEvent.builder()
                 .eventId("evt-1")
                 .postId(1L)
-                .userId(2L)
-                .authorId(3L)
+                .authorId(2L)
+                .commentId(3L)
                 .timestamp(TIMESTAMP)
                 .build();
-        String json = objectMapper.writeValueAsString(likeEvent);
-        when(analyticsEventMapper.toAnalyticsEvent(likeEvent)).thenReturn(null);
+        String json = objectMapper.writeValueAsString(commentEvent);
+        when(analyticsEventMapper.toAnalyticsEvent(commentEvent)).thenReturn(null);
 
         // Act / Assert
-        assertThatThrownBy(() -> likeEventListener.listenEvent(json))
+        assertThatThrownBy(() -> commentEventListener.listenEvent(json))
                 .isInstanceOf(NullPointerException.class);
         verify(analyticsEventService, never()).save(any());
     }
@@ -129,19 +119,19 @@ class LikeEventListenerTest {
     @Test
     void listenEvent_whenMapperFails_propagatesAndSkipsSave() throws Exception {
         // Arrange
-        AnalyticsLikeEvent likeEvent = AnalyticsLikeEvent.builder()
+        CommentEvent commentEvent = CommentEvent.builder()
                 .eventId("evt-1")
                 .postId(1L)
-                .userId(2L)
-                .authorId(3L)
+                .authorId(2L)
+                .commentId(3L)
                 .timestamp(TIMESTAMP)
                 .build();
-        String json = objectMapper.writeValueAsString(likeEvent);
-        when(analyticsEventMapper.toAnalyticsEvent(any(AnalyticsLikeEvent.class)))
+        String json = objectMapper.writeValueAsString(commentEvent);
+        when(analyticsEventMapper.toAnalyticsEvent(any(CommentEvent.class)))
                 .thenThrow(new RuntimeException("mapper failed"));
 
         // Act / Assert
-        assertThatThrownBy(() -> likeEventListener.listenEvent(json))
+        assertThatThrownBy(() -> commentEventListener.listenEvent(json))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("mapper failed");
         verify(analyticsEventService, never()).save(any());
@@ -150,20 +140,20 @@ class LikeEventListenerTest {
     @Test
     void listenEvent_whenServiceFails_propagates() throws Exception {
         // Arrange
-        AnalyticsLikeEvent likeEvent = AnalyticsLikeEvent.builder()
+        CommentEvent commentEvent = CommentEvent.builder()
                 .eventId("evt-1")
                 .postId(1L)
-                .userId(2L)
-                .authorId(3L)
+                .authorId(2L)
+                .commentId(3L)
                 .timestamp(TIMESTAMP)
                 .build();
-        String json = objectMapper.writeValueAsString(likeEvent);
+        String json = objectMapper.writeValueAsString(commentEvent);
         AnalyticsEvent analyticsEvent = new AnalyticsEvent();
-        when(analyticsEventMapper.toAnalyticsEvent(likeEvent)).thenReturn(analyticsEvent);
+        when(analyticsEventMapper.toAnalyticsEvent(commentEvent)).thenReturn(analyticsEvent);
         doThrow(new RuntimeException("db down")).when(analyticsEventService).save(any());
 
         // Act / Assert
-        assertThatThrownBy(() -> likeEventListener.listenEvent(json))
+        assertThatThrownBy(() -> commentEventListener.listenEvent(json))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("db down");
     }

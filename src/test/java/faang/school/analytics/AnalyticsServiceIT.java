@@ -13,6 +13,7 @@ import faang.school.analytics.repository.AnalyticsEventRepository;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,7 @@ import java.util.concurrent.TimeUnit;
 import static org.awaitility.Awaitility.await;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Tag("integration")
 @ActiveProfiles("test")
 @Import(KafkaTestConfig.class)
 @Testcontainers

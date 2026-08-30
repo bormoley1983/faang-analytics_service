@@ -69,6 +69,8 @@ class ProfileViewEventListenerTest {
     
     @Test
     void testListenEvent_NullMappedEvent() {
+        // Arrange: this listener does not log the mapped event before saving, so a null
+        // mapping is passed straight to save(null) (documented current contract).
         String eventJson = "{\"eventId\":\"evt-1\",\"userId\":123,\"viewerUserId\":456,\"timestamp\":\"2025-02-24T12:00:00Z\"}";
 
         ProfileViewEvent profileViewEvent = new ProfileViewEvent();
@@ -79,10 +81,29 @@ class ProfileViewEventListenerTest {
 
         when(analyticsEventMapper.toAnalyticsEvent(profileViewEvent)).thenReturn(null);
 
+        // Act
         profileViewEventListener.listenEvent(eventJson);
 
+        // Assert
         verify(analyticsEventMapper).toAnalyticsEvent(profileViewEvent);
         verify(analyticsEventService).save(null);
+    }
+
+    @Test
+    void testListenEvent_UnsupportedSchemaVersion() throws Exception {
+        // Arrange
+        ProfileViewEvent profileViewEvent = new ProfileViewEvent();
+        profileViewEvent.setSchemaVersion(99);
+        profileViewEvent.setEventId("evt-1");
+        profileViewEvent.setUserId(123L);
+        profileViewEvent.setViewerUserId(456L);
+        profileViewEvent.setTimestamp(Instant.parse("2025-02-24T12:00:00Z"));
+        String eventJson = objectMapper.writeValueAsString(profileViewEvent);
+
+        // Act / Assert
+        assertThrows(IllegalArgumentException.class, () -> profileViewEventListener.listenEvent(eventJson));
+
+        verifyNoInteractions(analyticsEventService, analyticsEventMapper);
     }
 
     @Test

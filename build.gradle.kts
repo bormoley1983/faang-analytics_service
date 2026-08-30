@@ -1,5 +1,6 @@
 plugins {
     java
+    jacoco
     id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -95,6 +96,10 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params")
 }
 
+jacoco {
+    toolVersion = "0.8.15"
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
 
@@ -104,12 +109,78 @@ tasks.withType<Test> {
     )
 }
 
-tasks.test {
+// Unit tests only — integration tests are excluded by tag and run via `integrationTest`.
+tasks.named<Test>("test") {
+    useJUnitPlatform {
+        excludeTags("integration")
+    }
     testLogging {
         events("passed", "skipped", "failed", "standardOut", "standardError")
         showStandardStreams = true
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
+    finalizedBy(tasks.named("jacocoTestReport"))
+}
+
+// Integration tests (Testcontainers) — run explicitly, not part of the unit gate.
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests (tagged 'integration')."
+    group = "verification"
+    useJUnitPlatform {
+        includeTags("integration")
+    }
+    testLogging {
+        events("passed", "skipped", "failed", "standardOut", "standardError")
+        showStandardStreams = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        csv.required.set(false)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco"))
+    }
+}
+
+// Coverage gate for application logic only. Thresholds are set from the measured
+// unit-test baseline (2026-08-30, 78 unit tests) and ramp up non-decreasingly
+// (DEVPLAN_UNITSTESTS-RULES.md §3). Measured per-class baseline:
+//   AnalyticsEventService instr=1.00 line=1.00 branch=0.75 | listeners instr=1.00 line=1.00
+//   controllers instr=1.00 line=1.00 | Interval instr=0.92 line=1.00 branch=1.00
+//   EventContract/UserHeaderFilter/UserContext/FeignUserInterceptor instr=1.00 line=1.00
+// Gate: INSTRUCTION >= 0.90 per class (floor below the weakest measured class, Interval).
+// Documented exclusions (narrow, per rules): mapper.* (MapStruct-generated), dto.* (Lombok POJOs
+// except Interval which contains logic), model.* (Lombok entity/enum), config.* (Spring wiring,
+// property holders, Kafka bean factories), client.FeignConfig (bean wiring), exception.* (no logic).
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.test)
+    violationRules {
+        rule {
+            element = "CLASS"
+            includes = listOf(
+                "faang.school.analytics.service.*",
+                "faang.school.analytics.listener.*",
+                "faang.school.analytics.controller.*",
+                "faang.school.analytics.dto.Interval",
+                "faang.school.analytics.events.EventContract",
+                "faang.school.analytics.config.UserHeaderFilter",
+                "faang.school.analytics.config.UserContext",
+                "faang.school.analytics.client.FeignUserInterceptor"
+            )
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = "0.90".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(tasks.jacocoTestCoverageVerification)
 }
 
 tasks.bootJar {
