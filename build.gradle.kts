@@ -23,6 +23,8 @@ repositories {
     mavenCentral()
 }
 
+val mockitoAgent = configurations.create("mockitoAgent")
+
 dependencyManagement {
     imports {
         mavenBom("org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion")
@@ -94,6 +96,7 @@ dependencies {
 
     testImplementation("org.assertj:assertj-core")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
+    mockitoAgent("org.mockito:mockito-core") { isTransitive = false }
 }
 
 jacoco {
@@ -102,11 +105,7 @@ jacoco {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-
-    jvmArgs(
-        "-XX:+EnableDynamicAgentLoading",
-        "--enable-native-access=ALL-UNNAMED"
-    )
+    jvmArgs("-Xshare:off", "-javaagent:${mockitoAgent.asPath}")
 }
 
 // Unit tests only — integration tests are excluded by tag and run via `integrationTest`.
