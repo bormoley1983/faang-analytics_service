@@ -24,7 +24,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.kafka.ConfluentKafkaContainer;
+import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -66,7 +66,7 @@ public class ProfileViewEventListenerIT {
     static Network testNetwork = Network.newNetwork();
 
     private static final DockerImageName POSTGRES_IMAGE = DockerImageName.parse("postgres:18-alpine");
-    private static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("confluentinc/cp-kafka:7.7.7");
+    private static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("apache/kafka:4.3.1");
 
     @Container
     @SuppressWarnings("resource")
@@ -77,8 +77,8 @@ public class ProfileViewEventListenerIT {
 
     @Container
     @SuppressWarnings("resource")
-    static ConfluentKafkaContainer KAFKA_CONTAINER = 
-        new ConfluentKafkaContainer(KAFKA_IMAGE)
+    static KafkaContainer KAFKA_CONTAINER =
+        new KafkaContainer(KAFKA_IMAGE)
             .withNetwork(testNetwork)
             .withNetworkAliases("test-kafka");
 

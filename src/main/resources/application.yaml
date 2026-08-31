@@ -65,7 +65,7 @@ logging:
     faang.school.analytics.listener: info
 
 project-service:
-  host: ${PROJECT_SERVICE_HOST:http://localhost}
+  host: ${PROJECT_SERVICE_HOST:localhost}
   port: ${PROJECT_SERVICE_PORT:8082}
 
 app:
