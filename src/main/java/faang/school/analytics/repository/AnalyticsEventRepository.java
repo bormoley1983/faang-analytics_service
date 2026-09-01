@@ -8,12 +8,9 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import org.springframework.stereotype.Repository;
-
 import java.time.Instant;
 import java.util.stream.Stream;
 
-@Repository
 public interface AnalyticsEventRepository extends JpaRepository<AnalyticsEvent, Long> {
 
     Stream<AnalyticsEvent> findByReceiverIdAndEventType(long receiverId, EventType eventType);
