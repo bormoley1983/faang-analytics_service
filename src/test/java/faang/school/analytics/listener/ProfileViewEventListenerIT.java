@@ -101,13 +101,15 @@ public class ProfileViewEventListenerIT {
             .atMost(5, TimeUnit.SECONDS)
             .untilAsserted(() -> {
                 List<AnalyticsEvent> savedEvents = analyticsEventRepository.findAll();
-                
-                assertThat(savedEvents).isNotEmpty().hasSize(1);
 
-                assertThat(savedEvents).isNotEmpty().hasSize(1);
-                
-                AnalyticsEvent analyticsEvent = savedEvents.get(0);
+                AnalyticsEvent analyticsEvent = savedEvents.stream()
+                        .filter(event -> profileViewEvent.getEventId().equals(event.getEventId()))
+                        .findFirst()
+                        .orElse(null);
                 assertThat(analyticsEvent).isNotNull();
+                assertThat(savedEvents)
+                        .filteredOn(event -> profileViewEvent.getEventId().equals(event.getEventId()))
+                        .hasSize(1);
                 assertThat(analyticsEvent.getActorId()).isEqualTo(profileViewEvent.getViewerUserId());
                 assertThat(analyticsEvent.getReceiverId()).isEqualTo(profileViewEvent.getUserId());
                 assertThat(analyticsEvent.getEventType()).isEqualTo(EventType.PROFILE_VIEW);
