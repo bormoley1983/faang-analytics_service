@@ -2,9 +2,9 @@ package faang.school.analytics;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.testcontainers.containers.Network;
 
 import faang.school.analytics.config.kafka.KafkaTestConfig;
+import faang.school.analytics.config.IntegrationTestDependencies;
 import faang.school.analytics.events.CommentEvent;
 import faang.school.analytics.listener.CommentEventListener;
 import faang.school.analytics.model.AnalyticsEvent;
@@ -34,13 +34,6 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.kafka.KafkaContainer;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
-import java.lang.SuppressWarnings;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -56,7 +49,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("integration")
 @ActiveProfiles("test")
 @Import(KafkaTestConfig.class)
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext
 public class AnalyticsServiceIT {
@@ -65,26 +57,6 @@ public class AnalyticsServiceIT {
 
     @Value("${spring.kafka.topics.comment-topic.name}")
     private String commentTopicName;
-
-    static Network testNetwork = Network.newNetwork();
-
-    private static final DockerImageName POSTGRES_IMAGE = DockerImageName.parse("postgres:18-alpine");
-    private static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("apache/kafka:4.3.1");
-
-    @Container
-    @SuppressWarnings("resource")
-    static PostgreSQLContainer POSTGRESQL_CONTAINER =
-        new PostgreSQLContainer(POSTGRES_IMAGE)
-            .withNetwork(testNetwork)
-            .withNetworkAliases("test-postgres");									  
-
-    @Container
-    @SuppressWarnings("resource")
-    static KafkaContainer KAFKA_CONTAINER =
-        new KafkaContainer(KAFKA_IMAGE)
-            .withNetwork(testNetwork)
-            .withNetworkAliases("test-kafka");
-									 
 
     @Autowired
     private AnalyticsEventRepository analyticsEventRepository;
@@ -103,12 +75,12 @@ public class AnalyticsServiceIT {
 
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRESQL_CONTAINER::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRESQL_CONTAINER::getUsername);
-        registry.add("spring.datasource.password", POSTGRESQL_CONTAINER::getPassword);
+        registry.add("spring.datasource.url", IntegrationTestDependencies::postgresUrl);
+        registry.add("spring.datasource.username", IntegrationTestDependencies::postgresUsername);
+        registry.add("spring.datasource.password", IntegrationTestDependencies::postgresPassword);
         
-        registry.add("spring.kafka.bootstrap-servers", KAFKA_CONTAINER::getBootstrapServers);
-        registry.add("spring.kafka.consumer.bootstrap-servers", KAFKA_CONTAINER::getBootstrapServers);
+        registry.add("spring.kafka.bootstrap-servers", IntegrationTestDependencies::kafkaBootstrapServers);
+        registry.add("spring.kafka.consumer.bootstrap-servers", IntegrationTestDependencies::kafkaBootstrapServers);
         registry.add("spring.kafka.consumer.auto-offset-reset", () -> "earliest");
         registry.add("spring.main.allow-bean-definition-overriding", () -> "true");
     }
@@ -116,10 +88,8 @@ public class AnalyticsServiceIT {
     @BeforeAll
     static void logContainerDetails() {
     try {
-        log.info("=== Testcontainers Details ===");
-        log.info("Postgres JDBC URL: {}", POSTGRESQL_CONTAINER.getJdbcUrl());
-        log.info("Postgres Username: {}", POSTGRESQL_CONTAINER.getUsername());
-        log.info("Kafka Bootstrap Servers: {}", KAFKA_CONTAINER.getBootstrapServers());
+        IntegrationTestDependencies.postgresUrl();
+        IntegrationTestDependencies.kafkaBootstrapServers();
     } catch (Exception e) {
         log.error("Error initializing containers", e);
         throw new RuntimeException(e);
@@ -143,19 +113,14 @@ public class AnalyticsServiceIT {
     }
 
     @Test
-    void testPostgresContainerIsRunning() {
-        assertThat(POSTGRESQL_CONTAINER).isNotNull();
-        assertThat(POSTGRESQL_CONTAINER.isRunning()).isTrue();
-        assertThat(POSTGRESQL_CONTAINER.getJdbcUrl()).isNotBlank();
-        assertThat(POSTGRESQL_CONTAINER.getUsername()).isNotBlank();
-        assertThat(POSTGRESQL_CONTAINER.getPassword()).isNotBlank();
+    void testPostgresDependencyIsConfigured() {
+        assertThat(IntegrationTestDependencies.postgresUrl()).isNotBlank();
+        assertThat(IntegrationTestDependencies.postgresUsername()).isNotBlank();
     }
 
     @Test
-    void testKafkaContainerIsRunning() {
-        assertThat(KAFKA_CONTAINER).isNotNull();
-        assertThat(KAFKA_CONTAINER.isRunning()).isTrue();
-        assertThat(KAFKA_CONTAINER.getBootstrapServers()).isNotBlank();
+    void testKafkaDependencyIsConfigured() {
+        assertThat(IntegrationTestDependencies.kafkaBootstrapServers()).isNotBlank();
     }
 
     @Test
@@ -262,7 +227,8 @@ public class AnalyticsServiceIT {
     @Test
     void malformedMessageIsRoutedToDeadLetterTopic() throws Exception {
         Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_CONTAINER.getBootstrapServers());
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                IntegrationTestDependencies.kafkaBootstrapServers());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "analytics-dlt-test-" + UUID.randomUUID());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);

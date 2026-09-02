@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import faang.school.analytics.AnalyticsServiceIT;
+import faang.school.analytics.config.IntegrationTestDependencies;
 import faang.school.analytics.config.kafka.KafkaTestConfig;
 import faang.school.analytics.events.ProfileViewEvent;
 import faang.school.analytics.model.AnalyticsEvent;
@@ -24,12 +25,6 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.kafka.KafkaContainer;
-import org.testcontainers.containers.Network;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -44,7 +39,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("integration")
 @ActiveProfiles("test")
 @Import(KafkaTestConfig.class)
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext
 public class ProfileViewEventListenerIT {
@@ -63,38 +57,19 @@ public class ProfileViewEventListenerIT {
     @Value("${spring.kafka.topics.user-profile-view-topic.name}")
     private String userViewProfileTopicName;
 
-    static Network testNetwork = Network.newNetwork();
-
-    private static final DockerImageName POSTGRES_IMAGE = DockerImageName.parse("postgres:18-alpine");
-    private static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("apache/kafka:4.3.1");
-
-    @Container
-    @SuppressWarnings("resource")
-    static PostgreSQLContainer POSTGRESQL_CONTAINER =
-        new PostgreSQLContainer(POSTGRES_IMAGE)
-            .withNetwork(testNetwork)
-            .withNetworkAliases("test-postgres");									  
-
-    @Container
-    @SuppressWarnings("resource")
-    static KafkaContainer KAFKA_CONTAINER =
-        new KafkaContainer(KAFKA_IMAGE)
-            .withNetwork(testNetwork)
-            .withNetworkAliases("test-kafka");
-
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRESQL_CONTAINER::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRESQL_CONTAINER::getUsername);
-        registry.add("spring.datasource.password", POSTGRESQL_CONTAINER::getPassword);
+        registry.add("spring.datasource.url", IntegrationTestDependencies::postgresUrl);
+        registry.add("spring.datasource.username", IntegrationTestDependencies::postgresUsername);
+        registry.add("spring.datasource.password", IntegrationTestDependencies::postgresPassword);
 
         registry.add("spring.datasource.hikari.schema", () -> "public");
         registry.add("spring.jpa.properties.hibernate.default_schema", () -> "public");
         registry.add("spring.liquibase.default-schema", () -> "public");
         registry.add("spring.liquibase.liquibase-schema", () -> "public");
 
-        registry.add("spring.kafka.bootstrap-servers", KAFKA_CONTAINER::getBootstrapServers);
-        registry.add("spring.kafka.consumer.bootstrap-servers", KAFKA_CONTAINER::getBootstrapServers);
+        registry.add("spring.kafka.bootstrap-servers", IntegrationTestDependencies::kafkaBootstrapServers);
+        registry.add("spring.kafka.consumer.bootstrap-servers", IntegrationTestDependencies::kafkaBootstrapServers);
         registry.add("spring.kafka.consumer.auto-offset-reset", () -> "earliest");
         registry.add("spring.main.allow-bean-definition-overriding", () -> "true");
     }
