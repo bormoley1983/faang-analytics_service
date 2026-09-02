@@ -7,9 +7,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PagedResponseTest {
 
@@ -50,5 +52,20 @@ class PagedResponseTest {
         assertThat(response.size()).isEqualTo(20);
         assertThat(response.totalElements()).isZero();
         assertThat(response.totalPages()).isZero();
+    }
+
+    @Test
+    void constructor_copiesContentAndReturnsAnImmutableView() {
+        // Arrange
+        List<String> source = new ArrayList<>(List.of("first"));
+
+        // Act
+        PagedResponse<String> response = new PagedResponse<>(source, 0, 1, 1, 1);
+        source.add("second");
+
+        // Assert
+        assertThat(response.content()).containsExactly("first");
+        assertThatThrownBy(() -> response.content().add("third"))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 }

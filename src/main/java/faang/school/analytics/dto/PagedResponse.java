@@ -11,6 +11,10 @@ public record PagedResponse<T>(
         long totalElements,
         int totalPages) {
 
+    public PagedResponse {
+        content = List.copyOf(content);
+    }
+
     public static <T> PagedResponse<T> from(Page<T> result) {
         return new PagedResponse<>(result.getContent(), result.getNumber(), result.getSize(),
                 result.getTotalElements(), result.getTotalPages());
