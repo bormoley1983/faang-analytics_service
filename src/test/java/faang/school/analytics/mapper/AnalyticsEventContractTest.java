@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import faang.school.analytics.events.CommentEvent;
 import faang.school.analytics.model.EventType;
+import org.mapstruct.factory.Mappers;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -12,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AnalyticsEventContractTest {
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-    private final AnalyticsEventMapper mapper = new AnalyticsEventMapperImpl();
+    private final AnalyticsEventMapper mapper = Mappers.getMapper(AnalyticsEventMapper.class);
 
     @Test
     void deserializesAndMapsVersionedCommentContractWithoutMocks() throws Exception {
